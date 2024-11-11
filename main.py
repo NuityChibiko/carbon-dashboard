@@ -1,13 +1,34 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import pytesseract
 from pdf2image import convert_from_bytes
 from io import BytesIO
+import logging
+
+# ตั้งค่าการบันทึก log ข้อผิดพลาด
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Origin ที่อนุญาต
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to the Fuel Receipt Upload API"}
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     try:
+        if file.content_type != 'application/pdf':
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF.")
+
         # อ่านข้อมูลจากไฟล์ที่อัปโหลดเข้ามา
         file_content = await file.read()
 
@@ -18,13 +39,12 @@ async def upload_pdf(file: UploadFile = File(...)):
         extracted_data = []
         for page_image in pdf_images:
             text = pytesseract.image_to_string(page_image, lang='tha')
-            # สามารถเพิ่มการประมวลผลเพื่อดึงข้อมูลที่ต้องการจาก text ตรงนี้ได้
-
-            # เพิ่มข้อมูลที่ดึงมาในรายการ
             extracted_data.append(text)
 
         return {"data": extracted_data}
 
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        # จับข้อผิดพลาดแล้วส่งกลับเป็น HTTP 500
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
