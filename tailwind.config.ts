@@ -1,14 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}", "./public/**/*.html"],
   theme: {
     extend: {
       fontFamily: {
-        archivo: ["Archivo", "sans-serif"], // กำหนดฟอนต์ Archivo
+        archivo: ["Archivo", "sans-serif"],
+        inter: ["Inter", "sans-serif"],
       },
     },
   },
