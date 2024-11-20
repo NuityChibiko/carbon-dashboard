@@ -3,15 +3,16 @@ import Image from "next/image";
 
 export default function Header() {
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-white shadow-md sticky top-0 z-20">
       <div className="flex items-center px-6">
         {/* Logo Section */}
-        <div className="flex items-center py-2">
+        <div className="flex items-center">
           <Image
             src="/images/logo.png"
             alt="Greenopia Logo"
             width={187}
             height={46}
+            style={{ width: "100%", height: "auto" }} // Maintain aspect ratio
             priority
           />
         </div>
