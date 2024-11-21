@@ -7,6 +7,9 @@ module.exports = {
         archivo: ["Archivo", "sans-serif"],
         inter: ["Inter", "sans-serif"],
       },
+      animation: {
+        "spin-slow": "spin 3s linear infinite",
+      },
     },
   },
   plugins: [],

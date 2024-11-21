@@ -7,6 +7,7 @@ type TableRow = {
   month: string;
   kWh: string | null; // Allow both string and null
   tonCO2eq: string | null; // Allow both string and null
+  isLoading: boolean; // Track loading state
 };
 
 export default function CFOCalculation() {
@@ -30,12 +31,13 @@ export default function CFOCalculation() {
     "December",
   ];
 
-  // Define table data with the correct type
+  // Define table data with loading state
   const [tableData, setTableData] = useState<TableRow[]>(
     months.map((month) => ({
       month,
       kWh: null, // Initially no data
       tonCO2eq: null, // Initially no data
+      isLoading: false, // No loading initially
     }))
   );
 
@@ -53,19 +55,24 @@ export default function CFOCalculation() {
   };
 
   const handleFileImport = (index: number) => {
-    // Mock the import file operation
+    // Mock the import file operation with a loading state
     const newData = [...tableData];
-    newData[index].kWh = "6,562"; // Mocked kWh value
-    newData[index].tonCO2eq = "3.281"; // Mocked tonCO2eq value
+    newData[index].isLoading = true; // Set loading state
     setTableData(newData);
-    setEditDropdown(null); // Close the edit dropdown
+
+    setTimeout(() => {
+      newData[index].kWh = "6,562"; // Mocked kWh value
+      newData[index].tonCO2eq = "3.281"; // Mocked tonCO2eq value
+      newData[index].isLoading = false; // Reset loading state
+      setTableData([...newData]);
+    }, 2000); // Simulate a 2-second file processing delay
   };
 
   const handleDeleteFile = (index: number) => {
-    // Mock the delete operation
     const newData = [...tableData];
     newData[index].kWh = null; // Reset to null
     newData[index].tonCO2eq = null;
+    newData[index].isLoading = false; // Reset loading state
     setTableData(newData);
     setEditDropdown(null); // Close the edit dropdown
   };
@@ -113,7 +120,7 @@ export default function CFOCalculation() {
                     onMouseDown={() => handleYearClick(year)}
                     className={`flex items-center justify-between px-4 py-2 cursor-pointer ${
                       selectedYear === year
-                        ? "bg-[#F6FFF1] text-[#559C2DFF] font-medium"
+                        ? "bg-[#F6FFF1] text-[#559C2DFF] font-bold"
                         : "hover:bg-gray-100"
                     }`}
                   >
@@ -151,20 +158,36 @@ export default function CFOCalculation() {
                 <td className="px-4 py-5 text-left font-semibold">
                   {row.month}
                 </td>
+                {/* kWh column */}
                 <td className="py-5 text-center">
-                  {row.kWh || <span className="text-gray-500">-</span>}
+                  {row.isLoading ? (
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin-slow border-dashed rounded-full h-5 w-5 border border-green-600"></div>
+                    </div>
+                  ) : (
+                    row.kWh || <span className="text-gray-500">-</span>
+                  )}
                 </td>
+                {/* tonCO2eq column */}
                 <td className="py-5 text-center">
-                  {row.tonCO2eq || <span className="text-gray-500">-</span>}
+                  {row.isLoading ? (
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin-slow border-dashed rounded-full h-5 w-5 border border-green-600"></div>
+                    </div>
+                  ) : (
+                    row.tonCO2eq || <span className="text-gray-500">-</span>
+                  )}
                 </td>
                 <td className="py-5 text-center relative">
-                  {!row.kWh ? (
+                  {!row.kWh && !row.isLoading ? (
                     <button
                       onClick={() => handleFileImport(index)}
                       className="bg-[#559C2DFF] text-white px-4 py-2 rounded-md hover:bg-[#37631DFF]"
                     >
                       Import File
                     </button>
+                  ) : row.isLoading ? (
+                    <span className="text-gray-500">Calculating...</span>
                   ) : (
                     <div>
                       <button
