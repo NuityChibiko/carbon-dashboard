@@ -1,18 +1,25 @@
+"use client";
 import { Archivo, Inter } from "next/font/google";
 import Header from "@/components/Header";
 import "@/styles/globals.css";
-import { Toaster } from "react-hot-toast"; // Import Toaster from react-hot-toast
+import "@/styles/styles.css";
+import { NextUIProvider } from "@nextui-org/react";
+import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer } from "react-toastify";
+import { Providers } from "./providers";
 
 const archivo = Archivo({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+  preload: true,
 });
 
 const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+  preload: true,
 });
 
 export default function RootLayout({
@@ -23,26 +30,17 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body className={`${archivo.className} ${inter.className}`}>
-        <Toaster
-          position="top-right" // Position toast notifications
-          toastOptions={{
-            style: {
-              borderRadius: "8px",
-              background: "#333", // Default background
-              color: "#fff", // Default text color
-              fontSize: "14px",
-              padding: "10px 15px",
-            },
-            success: {
-              duration: 3000, // Customize duration for success notifications
-            },
-            error: {
-              duration: 5000, // Customize duration for error notifications
-            },
-          }}
-        />
-        <Header />
-        <main className="flex-grow">{children}</main>
+        <Providers>
+          <Header />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar
+            closeOnClick
+            theme="colored"
+          />
+          <main className="flex-grow">{children}</main>
+        </Providers>
       </body>
     </html>
   );

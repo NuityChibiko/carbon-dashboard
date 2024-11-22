@@ -1,20 +1,34 @@
 "use client";
 
+import { TableRow } from "@/types/CFOCalculation.types";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@nextui-org/react";
 import React, { useState, useRef } from "react";
 import { FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { toast, Toaster } from "react-hot-toast"; // Import toast and Toaster
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import ModalConfirmDelete from "@/components/modals/ConfirmDeleteModal";
 
-type TableRow = {
-  month: string;
-  kWh: string | null;
-  tonCO2eq: string | null;
-  isLoading: boolean;
-};
+const ALLOWED_FILE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "application/pdf",
+];
+const MAX_FILE_SIZE_MB = 10 * 1024 * 1024; // 10MB
+const MIN_DIMENSIONS = 512;
+const MAX_DIMENSIONS = 10000;
 
-export default function CFOCalculation() {
+const CFOCalculation: React.FC = () => {
+  // State Management
   const [selectedYear, setSelectedYear] = useState(2024);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [editDropdown, setEditDropdown] = useState<number | null>(null);
+  const [modalIndex, setModalIndex] = useState<number | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const months = [
@@ -32,6 +46,9 @@ export default function CFOCalculation() {
     "December",
   ];
 
+  const years = [2024, 2023, 2022, 2021];
+
+  // Table Data State
   const [tableData, setTableData] = useState<TableRow[]>(
     months.map((month) => ({
       month,
@@ -41,8 +58,7 @@ export default function CFOCalculation() {
     }))
   );
 
-  const years = [2024, 2023, 2022, 2021];
-
+  // Dropdown Handlers
   const handleYearClick = (year: number) => {
     setSelectedYear(year);
     setIsDropdownOpen(false);
@@ -54,56 +70,103 @@ export default function CFOCalculation() {
     }
   };
 
-  const handleFileImport = (index: number) => {
+  // File Validation
+  const validateFile = async (file: File): Promise<string | null> => {
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return "Invalid file type. Only .png, .jpeg, .jpg, and .pdf are supported.";
+    }
+
+    if (file.size > MAX_FILE_SIZE_MB) {
+      return "File size must be under 10MB.";
+    }
+
+    if (file.type.startsWith("image/")) {
+      const dimensions = await getImageDimensions(file);
+      if (!dimensions) return "Unable to determine image dimensions.";
+
+      const { width, height } = dimensions;
+      if (width < MIN_DIMENSIONS || height < MIN_DIMENSIONS) {
+        return "File size must not be smaller than 512 x 512 pixels.";
+      }
+      if (width > MAX_DIMENSIONS || height > MAX_DIMENSIONS) {
+        return "File size must not be larger than 10,000 x 10,000 pixels.";
+      }
+    }
+
+    return null;
+  };
+
+  const getImageDimensions = (
+    file: File
+  ): Promise<{ width: number; height: number } | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        resolve(null);
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+    });
+  };
+
+  const handleFileImport = async (index: number, file: File) => {
     const newData = [...tableData];
-    newData[index].isLoading = true; // Set loading state
+    newData[index].isLoading = true;
     setTableData(newData);
 
-    setTimeout(() => {
-      newData[index].kWh = "6,562"; // Mocked kWh value
-      newData[index].tonCO2eq = "3.281"; // Mocked tonCO2eq value
-      newData[index].isLoading = false; // Reset loading state
+    try {
+      const validationError = await validateFile(file);
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
+      // Simulate file processing
+      setTimeout(() => {
+        newData[index].kWh = "6,562";
+        newData[index].tonCO2eq = "3.281";
+        newData[index].isLoading = false;
+        setTableData([...newData]);
+        toast.success("Calculation Successful!");
+      }, 2000);
+    } catch (error: unknown) {
+      newData[index].isLoading = false;
       setTableData([...newData]);
 
-      // Trigger success toast with custom layout
-      toast.success(
-        <div className="flex items-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-white rounded-full mr-3">
-            <FaCheck className="text-[#40A261]" size={20} />
-          </div>
-          <span className="text-sm font-medium">Calculation Successful</span>
-        </div>,
-        {
-          duration: 3000,
-          style: {
-            background: "#40A261",
-            color: "#fff",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-          },
-          icon: null, // Remove the default icon
-        }
-      );
-    }, 2000); // Simulate a 2-second file processing delay
+      if (error instanceof Error) {
+        toast.error(error.message || "An error occurred.");
+      } else {
+        toast.error("An unexpected error occurred.");
+      }
+    }
   };
 
   const handleDeleteFile = (index: number) => {
-    const newData = [...tableData];
-    newData[index].kWh = null;
-    newData[index].tonCO2eq = null;
-    newData[index].isLoading = false;
-    setTableData(newData);
-    setEditDropdown(null);
+    setTableData((prevData) =>
+      prevData.map((row, i) =>
+        i === index
+          ? { ...row, kWh: null, tonCO2eq: null, isLoading: false }
+          : row
+      )
+    );
+    setModalIndex(null);
+    toast.success("File deleted successfully!");
   };
+
+  const LoadingSpinner: React.FC = () => (
+    <div className="flex justify-center items-center">
+      <div className="animate-spin-slow border-dashed rounded-full h-5 w-5 border border-green-600"></div>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto mt-10">
-      {/* Toaster Component */}
-      <Toaster position="top-right" reverseOrder={false} />
-
-      {/* Page Header */}
       <h1 className="text-3xl font-bold font-archivo text-center mb-8">
         CFO SCOPE 2 Calculation
       </h1>
@@ -111,10 +174,7 @@ export default function CFOCalculation() {
       {/* Year Selector */}
       <div className="mb-6 flex justify-center">
         <div className="w-[290px]">
-          <label
-            htmlFor="year-select"
-            className="font-inter block text-sm font-bold mb-2"
-          >
+          <label className="font-inter block text-sm font-bold mb-2">
             Select year
           </label>
           <div
@@ -124,9 +184,8 @@ export default function CFOCalculation() {
             onBlur={handleBlur}
           >
             <div
-              id="year-select"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="cursor-pointer w-full px-4 py-2 border rounded-md text-sm flex justify-between items-center bg-white focus:outline-none focus:ring-1 focus:ring-[#559C2DFF]"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
               {selectedYear}
               <span className="ml-2 text-gray-500">
@@ -139,13 +198,14 @@ export default function CFOCalculation() {
                   <li
                     key={year}
                     onMouseDown={() => handleYearClick(year)}
-                    className={`px-4 py-2 cursor-pointer ${
+                    className={`flex items-center justify-between px-4 py-2 cursor-pointer ${
                       selectedYear === year
                         ? "bg-[#F6FFF1] text-[#559C2DFF] font-bold"
                         : "hover:bg-gray-100"
                     }`}
                   >
                     {year}
+                    {selectedYear === year && <FaCheck color="#559C2DFF" />}
                   </li>
                 ))}
               </ul>
@@ -176,70 +236,115 @@ export default function CFOCalculation() {
                 <td className="px-4 py-5 text-left font-semibold">
                   {row.month}
                 </td>
-                {/* kWh column */}
                 <td className="py-5 text-center">
-                  {row.isLoading ? (
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin-slow border-dashed rounded-full h-5 w-5 border border-green-600"></div>
-                    </div>
-                  ) : (
-                    row.kWh || <span className="text-gray-500">-</span>
-                  )}
+                  {row.isLoading ? <LoadingSpinner /> : row.kWh || "-"}
                 </td>
-                {/* tonCO2eq column */}
                 <td className="py-5 text-center">
-                  {row.isLoading ? (
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin-slow border-dashed rounded-full h-5 w-5 border border-green-600"></div>
-                    </div>
-                  ) : (
-                    row.tonCO2eq || <span className="text-gray-500">-</span>
-                  )}
+                  {row.isLoading ? <LoadingSpinner /> : row.tonCO2eq || "-"}
                 </td>
                 <td className="py-5 text-center relative">
                   {!row.kWh && !row.isLoading ? (
-                    <button
-                      onClick={() => handleFileImport(index)}
-                      className="bg-[#559C2DFF] text-white px-4 py-2 rounded-md hover:bg-[#37631DFF]"
-                    >
+                    <label className="bg-[#559C2DFF] text-white px-4 py-2 rounded-md hover:bg-[#37631DFF] cursor-pointer">
                       Import File
-                    </button>
+                      <input
+                        type="file"
+                        accept=".png,.jpeg,.jpg,.pdf"
+                        className="hidden"
+                        onChange={(e) =>
+                          e.target.files &&
+                          handleFileImport(index, e.target.files[0])
+                        }
+                      />
+                    </label>
                   ) : row.isLoading ? (
                     <span className="text-gray-500">Calculating...</span>
                   ) : (
-                    <div>
-                      <button
-                        onClick={() =>
-                          setEditDropdown(editDropdown === index ? null : index)
-                        }
-                        className="text-green-600"
+                    <Dropdown placement="right-start">
+                      <DropdownTrigger>
+                        <button className="text-green-600 focus:outline-none">
+                          Edit
+                        </button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Edit Options"
+                        onAction={(actionKey) => {
+                          if (actionKey === "import") {
+                            document
+                              .getElementById(`file-upload-${index}`)
+                              ?.click();
+                          } else if (actionKey === "delete") {
+                            setModalIndex(index);
+                          }
+                        }}
                       >
-                        Edit
-                      </button>
-                      {editDropdown === index && (
-                        <ul className="absolute right-0 top-5 bg-white border rounded-md shadow-md text-sm z-10 text-left">
-                          <li
-                            onClick={() => handleFileImport(index)}
-                            className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                          >
-                            Import new file
-                          </li>
-                          <li
-                            onClick={() => handleDeleteFile(index)}
-                            className="px-3 py-2 text-red-600 cursor-pointer hover:bg-gray-100"
-                          >
-                            Delete
-                          </li>
-                        </ul>
-                      )}
-                    </div>
+                        <DropdownItem
+                          key="import"
+                          className="hover:bg-gray-100"
+                        >
+                          Import new file
+                        </DropdownItem>
+                        <DropdownItem
+                          key="delete"
+                          className="text-red-600 hover:bg-gray-100"
+                          color="danger"
+                        >
+                          Delete
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
                   )}
+                  <input
+                    title="Import new file"
+                    type="file"
+                    id={`file-upload-${index}`}
+                    accept=".png,.jpeg,.jpg,.pdf"
+                    className="hidden"
+                    onChange={(e) =>
+                      e.target.files &&
+                      handleFileImport(index, e.target.files[0])
+                    }
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="bg-gray-100 font-bold text-[16px]">
+              <td className="px-4 py-5 text-left">Total</td>
+              <td className="py-5 text-center">
+                {tableData.reduce(
+                  (sum, row) => sum + (parseInt(row.kWh || "0", 10) || 0),
+                  0
+                )}
+              </td>
+              <td className="py-5 text-center">
+                {tableData
+                  .reduce(
+                    (sum, row) => sum + (parseFloat(row.tonCO2eq || "0") || 0),
+                    0
+                  )
+                  .toFixed(3)}
+              </td>
+              <td className="py-5 text-center">
+                <button className="text-[14px] font-medium bg-[#40A261FF] text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                  Export File
+                </button>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
+
+      {/* Modal Confirm Delete */}
+      {modalIndex !== null && (
+        <ModalConfirmDelete
+          isOpen={modalIndex !== null}
+          onClose={() => setModalIndex(null)}
+          onConfirm={() => handleDeleteFile(modalIndex)}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default CFOCalculation;
