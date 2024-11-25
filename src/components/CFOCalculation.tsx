@@ -345,7 +345,7 @@ const CFOCalculation: React.FC = () => {
                       sum + parseFloat(row.kWh?.replace(/,/g, "") || "0"),
                     0
                   ),
-                  0
+                  3
                 )}
               </td>
               <td className="py-5 text-center">
