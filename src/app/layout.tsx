@@ -3,7 +3,6 @@ import { Archivo, Inter } from "next/font/google";
 import Header from "@/components/Header";
 import "@/styles/globals.css";
 import "@/styles/styles.css";
-import { NextUIProvider } from "@nextui-org/react";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 import { Providers } from "./providers";

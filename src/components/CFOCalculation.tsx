@@ -12,6 +12,8 @@ import { FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ModalConfirmDelete from "@/components/modals/ConfirmDeleteModal";
+import { formatNumber } from "@/helper/numberFormatter";
+import axios from "axios";
 
 const ALLOWED_FILE_TYPES = [
   "image/png",
@@ -116,6 +118,7 @@ const CFOCalculation: React.FC = () => {
     });
   };
 
+  // OCR File Handling and API Integration
   const handleFileImport = async (index: number, file: File) => {
     const newData = [...tableData];
     newData[index].isLoading = true;
@@ -127,14 +130,25 @@ const CFOCalculation: React.FC = () => {
         throw new Error(validationError);
       }
 
-      // Simulate file processing
-      setTimeout(() => {
-        newData[index].kWh = "6,562";
-        newData[index].tonCO2eq = "3.281";
-        newData[index].isLoading = false;
-        setTableData([...newData]);
-        toast.success("Calculation Successful!");
-      }, 2000);
+      const base64String = await convertFileToBase64(file);
+
+      // Call local API Route
+      const response = await axios.post("/api/general_invoice_ocr", {
+        imageBase64: base64String,
+      });
+
+      console.log("API Response:", response.data);
+
+      // Simulate processing extracted data
+      const extractedKWh = parseFloat(response.data.kWh || "6562"); // Adjust this key based on actual response
+      const tonCO2eq =
+        Math.floor(((extractedKWh * 0.4999) / 1000) * 1000) / 1000;
+
+      newData[index].kWh = formatNumber(extractedKWh, 0);
+      newData[index].tonCO2eq = formatNumber(tonCO2eq, 3);
+      newData[index].isLoading = false;
+      setTableData([...newData]);
+      toast.success("File processed successfully!");
     } catch (error: unknown) {
       newData[index].isLoading = false;
       setTableData([...newData]);
@@ -145,6 +159,19 @@ const CFOCalculation: React.FC = () => {
         toast.error("An unexpected error occurred.");
       }
     }
+  };
+
+  // Convert File to Base64 String and Remove Content Type Prefix
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(",").pop(); // Removes the "data:image/...;base64," prefix
+        resolve(base64String || "");
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleDeleteFile = (index: number) => {
@@ -312,18 +339,23 @@ const CFOCalculation: React.FC = () => {
             <tr className="bg-gray-100 font-bold text-[16px]">
               <td className="px-4 py-5 text-left">Total</td>
               <td className="py-5 text-center">
-                {tableData.reduce(
-                  (sum, row) => sum + (parseInt(row.kWh || "0", 10) || 0),
+                {formatNumber(
+                  tableData.reduce(
+                    (sum, row) =>
+                      sum + parseFloat(row.kWh?.replace(/,/g, "") || "0"),
+                    0
+                  ),
                   0
                 )}
               </td>
               <td className="py-5 text-center">
-                {tableData
-                  .reduce(
-                    (sum, row) => sum + (parseFloat(row.tonCO2eq || "0") || 0),
+                {formatNumber(
+                  tableData.reduce(
+                    (sum, row) => sum + parseFloat(row.tonCO2eq || "0"),
                     0
-                  )
-                  .toFixed(3)}
+                  ),
+                  3
+                )}
               </td>
               <td className="py-5 text-center">
                 <button className="text-[14px] font-medium bg-[#40A261FF] text-white px-4 py-2 rounded-lg hover:bg-green-700">
