@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-const apiUrl = "https://apis.aigen.online/aiscript/general-invoice/v2";
+const apiUrl = "https://apis.aigen.online/aiscript/utility-electricitybill/v1";
 
 export async function POST(req: NextRequest) {
   try {
