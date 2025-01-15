@@ -9,9 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.1.5",
-    "@nextui-org/react": "^2.4.8",
+    "@nextui-org/accordion": "^2.2.7",
+    "@nextui-org/react": "^2.6.11",
+    "@nextui-org/theme": "^2.4.5",
+    "@nextui-org/use-aria-accordion": "^2.0.7",
+    "@nextui-org/use-aria-multiselect": "^2.0.0",
     "axios": "^1.7.7",
     "framer-motion": "^11.11.17",
     "fuel-receipt-frontend": "file:",
